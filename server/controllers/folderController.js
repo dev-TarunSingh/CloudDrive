@@ -63,6 +63,38 @@ export const getAllFolders = async (req, res) => {
   }
 };
 
+export const getContentRecursive = async (req, res) => {
+  try {
+    const parentId = req.query.parentId || null;
+    const userId = req.user.id;
+
+    // Recursive function to get all descendant folder IDs
+    const getDescendantFolderIds = async (folderId) => {
+      const childFolders = await Folder.find({ parentId: folderId, userId }).lean();
+      let ids = childFolders.map((f) => f._id.toString());
+      for (const child of childFolders) {
+        const childIds = await getDescendantFolderIds(child._id);
+        ids = ids.concat(childIds);
+      }
+      return ids;
+    };
+
+    const descendantFolderIds = await getDescendantFolderIds(parentId);
+    const allFolderIds = parentId ? [parentId, ...descendantFolderIds] : descendantFolderIds;
+
+    // Fetch folders directly under parentId
+    const folders = await Folder.find({ parentId, userId });
+
+    // Fetch images in parent folder and all descendant folders
+    const images = await Image.find({ folderId: { $in: allFolderIds }, userId });
+
+    res.json({ folders, images });
+  } catch (error) {
+    console.error("Failed to load recursive folder contents:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 export const deleteFolder = async (req, res) => {
   const { id } = req.params;
   await Folder.deleteOne({ _id: id, userId: req.user.id });

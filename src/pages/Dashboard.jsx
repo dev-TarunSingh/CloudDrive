@@ -65,6 +65,8 @@ export default function Dashboard() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuTarget, setMenuTarget] = useState(null);
   const [refreshFlag, setRefreshFlag] = useState(false);
+  const [searchResults, setSearchResults] = useState({ folders: [], images: [] });
+  const [isSearching, setIsSearching] = useState(false);
 
   const token = localStorage.getItem("token");
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -94,9 +96,9 @@ export default function Dashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (token) {
+    if (token && !isSearching) {
       axios
-        .get("http://localhost:5000/api/folders/contents?parentId=" + (currentFolderId || ""), { headers })
+        .get("http://localhost:5000/api/folders/contents/recursive?parentId=" + (currentFolderId || ""), { headers })
         .then((res) => {
           setFolders(res.data.folders || []);
           setImages(res.data.images || []);
@@ -109,7 +111,7 @@ export default function Dashboard() {
           });
         });
     }
-  }, [token, refreshFlag, currentFolderId]);
+  }, [token, refreshFlag, currentFolderId, isSearching]);
 
   const triggerRefresh = () => setRefreshFlag((prev) => !prev);
 
@@ -246,6 +248,14 @@ export default function Dashboard() {
     f.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredSearchFolders = searchResults.folders.filter((f) =>
+    f.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredSearchImages = searchResults.images.filter((img) =>
+    img.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   const renderFolder = (folder) => {
     return (
       <Box key={folder._id} sx={{ pl: 2, borderLeft: "1px solid #ccc", mb: 1 }}>
@@ -272,6 +282,36 @@ export default function Dashboard() {
     );
   };
 
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearch(query);
+
+    if (query.trim() === "") {
+      setIsSearching(false);
+      setSearchResults({ folders: [], images: [] });
+      return;
+    }
+
+    setIsSearching(true);
+
+    // Search images by name from backend
+    axios
+      .get(`http://localhost:5000/api/images/search?query=${encodeURIComponent(query)}`, { headers })
+      .then((res) => {
+        setSearchResults({ folders: [], images: res.data });
+      })
+      .catch(() => {
+        setAlert({
+          open: true,
+          message: "Failed to search images.",
+          severity: "error",
+        });
+      });
+
+    // Optionally, you can also search folders by name from backend or filter locally
+    // For now, filtering folders locally
+  };
+
   return (
     <>
       <AppBar position="static" sx={{ backgroundColor: "#1976d2" }}>
@@ -285,7 +325,7 @@ export default function Dashboard() {
               placeholder="Search..."
               variant="outlined"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               sx={{ background: "white", borderRadius: 1 }}
             />
             <Avatar>{user.username?.[0]?.toUpperCase() || "?"}</Avatar>
@@ -342,7 +382,13 @@ export default function Dashboard() {
         </Box>
 
         <List>
-          {filteredFolders.length > 0 ? (
+          {isSearching ? (
+            filteredSearchFolders.length > 0 ? (
+              filteredSearchFolders.map((folder) => renderFolder(folder))
+            ) : (
+              <Typography>No folders found.</Typography>
+            )
+          ) : filteredFolders.length > 0 ? (
             filteredFolders.map((folder) => renderFolder(folder))
           ) : (
             <Typography>No folders found.</Typography>
@@ -350,13 +396,17 @@ export default function Dashboard() {
         </List>
 
         <Box mt={4}>
-          <Typography variant="h6">Images in {folderStack.length > 0 ? folderStack[folderStack.length - 1].name : "Root Folder"}</Typography>
+          <Typography variant="h6">
+            {isSearching
+              ? `Search Results for "${search}"`
+              : `Images in ${folderStack.length > 0 ? folderStack[folderStack.length - 1].name : "Root Folder"}`}
+          </Typography>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            {images.map((img) => (
+            {(isSearching ? filteredSearchImages : images).map((img) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={img._id}>
                 <Paper sx={{ p: 1, textAlign: "center", position: "relative" }}>
                   <img
-                    src={`http://localhost:5000/uploads/${img.filename}`}
+                    src={`http://localhost:5000${img.url}`}
                     alt={img.name}
                     style={{
                       maxWidth: "100%",
