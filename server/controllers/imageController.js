@@ -17,17 +17,29 @@ const storage = multer.diskStorage({
 export const upload = multer({ storage }).array('images', 10);
 
 export const uploadImage = async (req, res) => {
-  const { folder } = req.body;
-  const images = req.files.map(file => ({
-    name: file.originalname,
-    url: `/uploads/${file.filename}`,
-    folderId: folder,
-    userId: req.user.id,
-  }));
+  try {
+    const { folder } = req.body;
 
-  await Image.insertMany(images);
-  res.json({ success: true, images });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded." });
+    }
+
+    const images = req.files.map((file) => ({
+      name: file.originalname,
+      url: `/uploads/${file.filename}`,
+      folderId: folder,
+      userId: req.user.id,
+    }));
+
+    const inserted = await Image.insertMany(images);
+    return res.json({ success: true, images: inserted });
+
+  } catch (err) {
+    console.error("Upload Error:", err);
+    return res.status(500).json({ success: false, message: "Server error during upload." });
+  }
 };
+
 
 export const searchImages = async (req, res) => {
   const { query } = req.query;

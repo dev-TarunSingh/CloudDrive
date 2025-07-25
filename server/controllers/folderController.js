@@ -87,7 +87,7 @@ export const getContentRecursive = async (req, res) => {
 
     // Fetch images in parent folder and all descendant folders
     const images = await Image.find({ folderId: { $in: allFolderIds }, userId });
-
+    console.log(images);
     res.json({ folders, images });
   } catch (error) {
     console.error("Failed to load recursive folder contents:", error.message);

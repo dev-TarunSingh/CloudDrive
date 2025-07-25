@@ -77,8 +77,8 @@ export default function Dashboard() {
     if (!token) return;
 
     axios
-      .get("http://localhost:5000/api/user/profile", { headers })
-      .then((res) => {setUser(res.data); console.log("User data fetched:", res.data)})
+      .get("https://clouddrive-pink.onrender.com/api/user/profile", { headers })
+      .then((res) => setUser(res.data))
       .catch((err) => {
         const message = err?.response?.data?.message || "Something went wrong";
         if (message === "Invalid token" || message === "Unauthorized") {
@@ -98,7 +98,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (token && !isSearching) {
       axios
-        .get("http://localhost:5000/api/folders/contents/recursive?parentId=" + (currentFolderId || ""), { headers })
+        .get("https://clouddrive-pink.onrender.com/api/folders/contents/recursive?parentId=" + (currentFolderId || ""), { headers })
         .then((res) => {
           setFolders(res.data.folders || []);
           setImages(res.data.images || []);
@@ -131,7 +131,7 @@ export default function Dashboard() {
     }
     axios
       .post(
-        "http://localhost:5000/api/folders",
+        "https://clouddrive-pink.onrender.com/api/folders",
         { name: folderName, parentId: currentFolderId },
         { headers }
       )
@@ -152,7 +152,7 @@ export default function Dashboard() {
     if (currentFolderId) formData.append("folder", currentFolderId);
 
     axios
-      .post("http://localhost:5000/api/images/upload", formData, {
+      .post("https://clouddrive-pink.onrender.com/api/images/upload", formData, {
         headers: { ...headers, "Content-Type": "multipart/form-data" },
       })
       .then(() => {
@@ -212,7 +212,7 @@ export default function Dashboard() {
   const handleDownload = () => {
     if (menuTarget?.filename) {
       const link = document.createElement("a");
-      link.href = `http://localhost:5000/uploads/${menuTarget.filename}`;
+      link.href = `https://clouddrive-pink.onrender.com/uploads/${menuTarget.filename}`;
       link.download = menuTarget.name;
       document.body.appendChild(link);
       link.click();
@@ -223,8 +223,8 @@ export default function Dashboard() {
 
   const handleDelete = () => {
     const url = menuTarget.filename
-      ? `http://localhost:5000/api/images/${menuTarget._id}`
-      : `http://localhost:5000/api/folders/${menuTarget._id}`;
+      ? `https://clouddrive-pink.onrender.com/api/images/${menuTarget._id}`
+      : `https://clouddrive-pink.onrender.com/api/folders/${menuTarget._id}`;
 
     axios
       .delete(url, { headers })
@@ -293,8 +293,9 @@ export default function Dashboard() {
 
     setIsSearching(true);
 
+    // Search images by name from backend
     axios
-      .get(`http://localhost:5000/api/images/search?query=${encodeURIComponent(query)}`, { headers })
+      .get(`https://clouddrive-pink.onrender.com/api/images/search?query=${encodeURIComponent(query)}`, { headers })
       .then((res) => {
         setSearchResults({ folders: [], images: res.data });
       })
@@ -306,7 +307,11 @@ export default function Dashboard() {
         });
       });
 
+    // Optionally, you can also search folders by name from backend or filter locally
+    // For now, filtering folders locally
   };
+
+  console.log("fileteredImages:", images);  
 
   return (
     <>
@@ -402,7 +407,9 @@ export default function Dashboard() {
               <Grid item xs={12} sm={6} md={4} lg={3} key={img._id}>
                 <Paper sx={{ p: 1, textAlign: "center", position: "relative" }}>
                   <img
-                    src={`http://localhost:5000${img.url}`}
+                  
+                    src={`https://clouddrive-pink.onrender.com${img.url.startsWith('/') ? img.url : '/' + img.url}`}
+
                     alt={img.name}
                     style={{
                       maxWidth: "100%",
