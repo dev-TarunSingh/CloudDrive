@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import folderRoutes from "./routes/folderRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +41,7 @@ const PORT = process.env.PORT || 3000;
 app.use('/api/auth', authRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/user', userRoutes);
 
 
 

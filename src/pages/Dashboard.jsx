@@ -78,7 +78,7 @@ export default function Dashboard() {
 
     axios
       .get("http://localhost:5000/api/user/profile", { headers })
-      .then((res) => setUser(res.data))
+      .then((res) => {setUser(res.data); console.log("User data fetched:", res.data)})
       .catch((err) => {
         const message = err?.response?.data?.message || "Something went wrong";
         if (message === "Invalid token" || message === "Unauthorized") {
@@ -164,7 +164,6 @@ export default function Dashboard() {
       });
   };
 
-  // Helper function to get directory path string
   const getDirectoryPath = () => {
     if (folderStack.length === 0) return "Root Folder";
     return folderStack.map((folder) => folder.name).join(" / ");
@@ -294,7 +293,6 @@ export default function Dashboard() {
 
     setIsSearching(true);
 
-    // Search images by name from backend
     axios
       .get(`http://localhost:5000/api/images/search?query=${encodeURIComponent(query)}`, { headers })
       .then((res) => {
@@ -308,8 +306,6 @@ export default function Dashboard() {
         });
       });
 
-    // Optionally, you can also search folders by name from backend or filter locally
-    // For now, filtering folders locally
   };
 
   return (
