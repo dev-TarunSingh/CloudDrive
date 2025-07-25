@@ -42,7 +42,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
+      const res = await axios.post('https://clouddrive-pink.onrender.com/api/auth/login', {
         email: normalizedEmail,
         password,
       });
