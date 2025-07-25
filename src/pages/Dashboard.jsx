@@ -412,7 +412,7 @@ export default function Dashboard() {
                     }}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "/fallback.png";
+                      e.target.src = "/uploads/fallback.png";
                     }}
                   />
                   <Typography variant="body2" mt={1}>
