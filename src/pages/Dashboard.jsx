@@ -78,7 +78,7 @@ export default function Dashboard() {
 
     axios
       .get("https://clouddrive-pink.onrender.com/api/user/profile", { headers })
-      .then((res) => setUser(res.data))
+      .then((res) => {setUser(res.data); console.log("User data fetched:", res.data)})
       .catch((err) => {
         const message = err?.response?.data?.message || "Something went wrong";
         if (message === "Invalid token" || message === "Unauthorized") {
@@ -293,7 +293,6 @@ export default function Dashboard() {
 
     setIsSearching(true);
 
-    // Search images by name from backend
     axios
       .get(`https://clouddrive-pink.onrender.com/api/images/search?query=${encodeURIComponent(query)}`, { headers })
       .then((res) => {
@@ -307,11 +306,7 @@ export default function Dashboard() {
         });
       });
 
-    // Optionally, you can also search folders by name from backend or filter locally
-    // For now, filtering folders locally
   };
-
-  console.log("fileteredImages:", images);  
 
   return (
     <>
@@ -407,9 +402,7 @@ export default function Dashboard() {
               <Grid item xs={12} sm={6} md={4} lg={3} key={img._id}>
                 <Paper sx={{ p: 1, textAlign: "center", position: "relative" }}>
                   <img
-                  
-                    src={`https://clouddrive-pink.onrender.com${img.url.startsWith('/') ? img.url : '/' + img.url}`}
-
+                    src={`https://clouddrive-pink.onrender.com${img.url}`}
                     alt={img.name}
                     style={{
                       maxWidth: "100%",
