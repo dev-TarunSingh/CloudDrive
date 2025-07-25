@@ -1,0 +1,61 @@
+import Folder from "../models/Folder.js";
+import Image from "../models/Image.js";
+
+export const createFolder = async (req, res) => {
+  const { name, parentId } = req.body;
+  const folder = new Folder({ name, parentId, userId: req.user.id });
+  console.log("Creating folder:", folder);
+
+  await Folder.findByIdAndUpdate(parentId, { hasChildren: true });
+  console.log("Updated parent folder to have children:", parentId);
+  await folder.save();
+  res.json(folder);
+};
+
+export const getContent = async (req, res) => {
+  try {
+    const parentId = req.query.parentId || null;
+    const userId = req.user.id;
+
+    // Fetch direct folders and images only
+    const [folders, images] = await Promise.all([
+      Folder.find({ parentId, userId }),
+      Image.find({ folder: parentId, userId }),
+    ]);
+
+    res.json({ folders, images });
+  } catch (error) {
+    console.error("Failed to load folder contents:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getFolders = async (req, res) => {
+  try {
+    const parentId = req.query.parent || null;
+
+    const [folders, images] = await Promise.all([
+      Folder.find({
+        userId: req.user.id,
+        parentId: parentId,
+      }),
+      Image.find({
+        userId: req.user.id,
+        folder: parentId,
+      }),
+    ]);
+
+    res.json({ folders, images });
+  } catch (error) {
+    console.error("Error fetching folder contents:", error.message);
+    res.status(500).json({ message: "Failed to load folder contents" });
+  }
+};
+
+export const deleteFolder = async (req, res) => {
+  const { id } = req.params;
+  await Folder.deleteOne({ _id: id, userId: req.user.id });
+  await Folder.deleteMany({ parentId: id, userId: req.user.id });
+  await Image.deleteMany({ folderId: id, userId: req.user.id });
+  res.json({ message: "Folder and its contents deleted" });
+};
