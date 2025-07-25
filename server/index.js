@@ -7,12 +7,21 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
 import folderRoutes from "./routes/folderRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+
+
 const app = express();
+
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
