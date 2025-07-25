@@ -20,10 +20,15 @@ export const uploadImage = async (req, res) => {
   try {
     const { folder } = req.body;
 
+    // ✅ Check if files were uploaded
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, message: "No files uploaded." });
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded.",
+      });
     }
 
+    // ✅ Proceed only if files exist
     const images = req.files.map((file) => ({
       name: file.originalname,
       url: `/uploads/${file.filename}`,
@@ -31,14 +36,19 @@ export const uploadImage = async (req, res) => {
       userId: req.user.id,
     }));
 
+    // ✅ Insert into DB only after confirming upload
     const inserted = await Image.insertMany(images);
     return res.json({ success: true, images: inserted });
 
   } catch (err) {
     console.error("Upload Error:", err);
-    return res.status(500).json({ success: false, message: "Server error during upload." });
+    return res.status(500).json({
+      success: false,
+      message: "Server error during upload.",
+    });
   }
 };
+
 
 
 export const searchImages = async (req, res) => {
