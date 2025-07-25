@@ -1,5 +1,3 @@
-// Dashboard.jsx
-
 import React, { useState, useEffect } from "react";
 import {
   AppBar,
@@ -21,6 +19,11 @@ import {
   Alert,
   Menu,
   MenuItem,
+  Collapse,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -28,12 +31,28 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import HomeIcon from "@mui/icons-material/Home";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ExpandLess from "@mui/icons-material/ExpandLess";
+import ExpandMore from "@mui/icons-material/ExpandMore";
 import axios from "axios";
 
 export default function Dashboard() {
   const [folders, setFolders] = useState([]);
   const [images, setImages] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState({});
   const [folderStack, setFolderStack] = useState([]);
+
+  // New state for folder switch snackbar
+  const [folderSwitchSnackbar, setFolderSwitchSnackbar] = useState({
+    open: false,
+    message: "",
+  });
+
+  const toggleExpand = (folderId) => {
+    setExpandedFolders((prev) => ({
+      ...prev,
+      [folderId]: !prev[folderId],
+    }));
+  };
   const [search, setSearch] = useState("");
   const [user, setUser] = useState({ username: "", email: "" });
   const [alert, setAlert] = useState({
@@ -49,26 +68,8 @@ export default function Dashboard() {
 
   const token = localStorage.getItem("token");
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const currentFolderId =
-    folderStack.length > 0 ? folderStack[folderStack.length - 1]._id : null;
 
-  const fetchFolderContents = (folderId = null) => {
-    axios
-      .get(`http://localhost:5000/api/folders/contents?parent=${folderId || ""}`, {
-        headers,
-      })
-      .then((res) => {
-        setFolders(res.data.folders || []);
-        setImages(res.data.images || []);
-      })
-      .catch(() => {
-        setAlert({
-          open: true,
-          message: "Failed to load folder contents.",
-          severity: "error",
-        });
-      });
-  };
+  const currentFolderId = folderStack.length > 0 ? folderStack[folderStack.length - 1]._id : null;
 
   useEffect(() => {
     if (!token) return;
@@ -93,8 +94,22 @@ export default function Dashboard() {
   }, [token]);
 
   useEffect(() => {
-    if (token) fetchFolderContents(currentFolderId);
-  }, [token, currentFolderId, refreshFlag]);
+    if (token) {
+      axios
+        .get("http://localhost:5000/api/folders/contents?parentId=" + (currentFolderId || ""), { headers })
+        .then((res) => {
+          setFolders(res.data.folders || []);
+          setImages(res.data.images || []);
+        })
+        .catch(() => {
+          setAlert({
+            open: true,
+            message: "Failed to load folder contents.",
+            severity: "error",
+          });
+        });
+    }
+  }, [token, refreshFlag, currentFolderId]);
 
   const triggerRefresh = () => setRefreshFlag((prev) => !prev);
 
@@ -115,7 +130,7 @@ export default function Dashboard() {
     axios
       .post(
         "http://localhost:5000/api/folders",
-        { name: folderName, parent: currentFolderId },
+        { name: folderName, parentId: currentFolderId },
         { headers }
       )
       .then(() => {
@@ -147,24 +162,40 @@ export default function Dashboard() {
       });
   };
 
+  // Helper function to get directory path string
+  const getDirectoryPath = () => {
+    if (folderStack.length === 0) return "Root Folder";
+    return folderStack.map((folder) => folder.name).join(" / ");
+  };
+
   const openFolder = (folder) => {
     setFolderStack((prev) => {
       const newStack = [...prev, folder];
-      fetchFolderContents(folder._id);
+      setFolderSwitchSnackbar({
+        open: true,
+        message: `Switched to: ${newStack.map((f) => f.name).join(" / ")}`,
+      });
       return newStack;
     });
   };
 
   const goToFolder = (index) => {
-    const newStack = folderStack.slice(0, index + 1);
-    const newFolder = newStack[newStack.length - 1];
-    setFolderStack(newStack);
-    fetchFolderContents(newFolder?._id || null);
+    setFolderStack((prev) => {
+      const newStack = prev.slice(0, index + 1);
+      setFolderSwitchSnackbar({
+        open: true,
+        message: `Switched to: ${newStack.map((f) => f.name).join(" / ")}`,
+      });
+      return newStack;
+    });
   };
 
   const goToRoot = () => {
     setFolderStack([]);
-    fetchFolderContents(null);
+    setFolderSwitchSnackbar({
+      open: true,
+      message: "Switched to: Root Folder",
+    });
   };
 
   const handleMenuOpen = (e, item) => {
@@ -214,15 +245,40 @@ export default function Dashboard() {
   const filteredFolders = folders.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase())
   );
-  const filteredImages = images.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase())
-  );
+
+  const renderFolder = (folder) => {
+    return (
+      <Box key={folder._id} sx={{ pl: 2, borderLeft: "1px solid #ccc", mb: 1 }}>
+        <ListItem
+          button
+          onClick={() => openFolder(folder)}
+          sx={{ pl: 0, cursor: "pointer" }}
+        >
+          <ListItemIcon>
+            <FolderIcon sx={{ color: "#1976d2" }} />
+          </ListItemIcon>
+          <ListItemText primary={folder.name} />
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleMenuOpen(e, folder);
+            }}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </ListItem>
+      </Box>
+    );
+  };
 
   return (
     <>
       <AppBar position="static" sx={{ backgroundColor: "#1976d2" }}>
         <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6">MyDrive</Typography>
+          <Typography variant="h6" sx={{ cursor: "pointer" }} onClick={goToRoot}>
+            MyDrive
+          </Typography>
           <Box display="flex" alignItems="center" gap={2}>
             <TextField
               size="small"
@@ -242,20 +298,29 @@ export default function Dashboard() {
       </AppBar>
 
       <Container sx={{ mt: 2 }}>
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
-          <IconButton onClick={goToRoot}>
-            <HomeIcon />
-          </IconButton>
-          {folderStack.map((f, i) => (
-            <Box key={f._id} display="flex" alignItems="center" gap={1}>
-              <ChevronRightIcon />
-              <Button onClick={() => goToFolder(i)}>{f.name}</Button>
-            </Box>
-          ))}
-        </Box>
-
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">All Folders and Images</Typography>
+          {/* Breadcrumb navigation for folder path */}
+          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+            <Typography
+              variant="body1"
+              sx={{ cursor: "pointer", color: "#1976d2" }}
+              onClick={goToRoot}
+            >
+              Root
+            </Typography>
+            {folderStack.map((folder, index) => (
+              <React.Fragment key={folder._id}>
+                <ChevronRightIcon fontSize="small" sx={{ color: "#666" }} />
+                <Typography
+                  variant="body1"
+                  sx={{ cursor: "pointer", color: "#1976d2" }}
+                  onClick={() => goToFolder(index)}
+                >
+                  {folder.name}
+                </Typography>
+              </React.Fragment>
+            ))}
+          </Box>
           <Box display="flex" gap={2}>
             <Button variant="outlined" onClick={() => setOpenFolderDialog(true)}>
               Create Folder
@@ -276,63 +341,49 @@ export default function Dashboard() {
           </Box>
         </Box>
 
-        <Grid container spacing={2}>
-          {filteredFolders.map((folder) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={folder._id}>
-              <Paper
-                sx={{
-                  p: 2,
-                  position: "relative",
-                  cursor: "pointer",
-                  textAlign: "center",
-                }}
-              >
-                <Box onClick={() => openFolder(folder)}>
-                  <FolderIcon sx={{ fontSize: 40, color: "#1976d2" }} />
-                  <Typography>{folder.name}</Typography>
-                </Box>
-                <IconButton
-                  size="small"
-                  sx={{ position: "absolute", top: 4, right: 4 }}
-                  onClick={(e) => handleMenuOpen(e, folder)}
-                >
-                  <MoreVertIcon />
-                </IconButton>
-              </Paper>
-            </Grid>
-          ))}
+        <List>
+          {filteredFolders.length > 0 ? (
+            filteredFolders.map((folder) => renderFolder(folder))
+          ) : (
+            <Typography>No folders found.</Typography>
+          )}
+        </List>
 
-          {filteredImages.map((img) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={img._id}>
-              <Paper sx={{ p: 1, textAlign: "center", position: "relative" }}>
-                <img
-                  src={`http://localhost:5000/uploads/${img.filename}`}
-                  alt={img.name}
-                  style={{
-                    maxWidth: "100%",
-                    height: 150,
-                    objectFit: "cover",
-                    borderRadius: 4,
-                  }}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "/fallback.png";
-                  }}
-                />
-                <Typography variant="body2" mt={1}>
-                  {img.name}
-                </Typography>
-                <IconButton
-                  size="small"
-                  sx={{ position: "absolute", top: 4, right: 4 }}
-                  onClick={(e) => handleMenuOpen(e, img)}
-                >
-                  <MoreVertIcon />
-                </IconButton>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
+        <Box mt={4}>
+          <Typography variant="h6">Images in {folderStack.length > 0 ? folderStack[folderStack.length - 1].name : "Root Folder"}</Typography>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {images.map((img) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={img._id}>
+                <Paper sx={{ p: 1, textAlign: "center", position: "relative" }}>
+                  <img
+                    src={`http://localhost:5000/uploads/${img.filename}`}
+                    alt={img.name}
+                    style={{
+                      maxWidth: "100%",
+                      height: 150,
+                      objectFit: "cover",
+                      borderRadius: 4,
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/fallback.png";
+                    }}
+                  />
+                  <Typography variant="body2" mt={1}>
+                    {img.name}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    sx={{ position: "absolute", top: 4, right: 4 }}
+                    onClick={(e) => handleMenuOpen(e, img)}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Container>
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
@@ -370,6 +421,22 @@ export default function Dashboard() {
           variant="filled"
         >
           {alert.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Snackbar for folder switch */}
+      <Snackbar
+        open={folderSwitchSnackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setFolderSwitchSnackbar({ ...folderSwitchSnackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setFolderSwitchSnackbar({ ...folderSwitchSnackbar, open: false })}
+          severity="info"
+          variant="filled"
+        >
+          {folderSwitchSnackbar.message}
         </Alert>
       </Snackbar>
     </>

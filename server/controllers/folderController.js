@@ -20,7 +20,7 @@ export const getContent = async (req, res) => {
     // Fetch direct folders and images only
     const [folders, images] = await Promise.all([
       Folder.find({ parentId, userId }),
-      Image.find({ folder: parentId, userId }),
+      Image.find({ folderId: parentId, userId }),
     ]);
 
     res.json({ folders, images });
@@ -41,7 +41,7 @@ export const getFolders = async (req, res) => {
       }),
       Image.find({
         userId: req.user.id,
-        folder: parentId,
+        folderId: parentId,
       }),
     ]);
 
@@ -49,6 +49,17 @@ export const getFolders = async (req, res) => {
   } catch (error) {
     console.error("Error fetching folder contents:", error.message);
     res.status(500).json({ message: "Failed to load folder contents" });
+  }
+};
+
+export const getAllFolders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const folders = await Folder.find({ userId }).lean();
+    res.json({ folders });
+  } catch (error) {
+    console.error("Error fetching all folders:", error.message);
+    res.status(500).json({ message: "Failed to load all folders" });
   }
 };
 
